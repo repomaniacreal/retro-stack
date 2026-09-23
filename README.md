@@ -1,68 +1,68 @@
 # 🧱 Retro Stack
 
-Game menyusun balok bergaya isometrik dengan tema retro/arcade (neon, scanline CRT, font pixel). Dibuat murni dengan **HTML, CSS, dan JavaScript** — tanpa library atau build tool apa pun.
+An isometric block-stacking game with a retro/arcade theme (neon colors, CRT scanlines, pixel font). Built purely with **HTML, CSS, and JavaScript** — no libraries or build tools required.
 
-## 📦 Isi Paket
+## 📦 Package Contents
 
 ```
-index.html   # seluruh game (HTML + CSS + JS jadi satu file)
-README.md          # file ini
+index.html   # the entire game (HTML + CSS + JS in a single file)
+README.md    # this file
 ```
 
-## ⚙️ Cara Pemasangan
+## ⚙️ Installation
 
-Tidak perlu instalasi apa pun. Pilih salah satu cara:
+No installation needed. Pick one of the following:
 
-1. **Buka langsung**
-   Klik dua kali file `index.html`, atau seret ke jendela browser (Chrome/Edge/Firefox/Safari terbaru).
+1. **Open it directly**
+   Double-click `index.html`, or drag it into your browser window (latest Chrome/Edge/Firefox/Safari).
 
-2. **Jalankan lewat local server (opsional, disarankan untuk mobile testing)**
+2. **Run it via a local server (optional, recommended for mobile testing)**
    ```bash
-   # dari folder yang berisi index.html
+   # from the folder containing index.html
    python3 -m http.server 8000
    ```
-   Lalu buka `http://localhost:8000/index.html` di browser.
+   Then open `http://localhost:8000/index.html` in your browser.
 
-3. **Upload ke hosting statis**
-   File ini bisa langsung diunggah ke GitHub Pages, Netlify, Vercel, atau hosting statis lain karena semuanya self-contained dalam satu file HTML.
+3. **Upload to static hosting**
+   Since everything is self-contained in a single HTML file, you can upload it directly to GitHub Pages, Netlify, Vercel, or any other static host. Because the file is named `index.html`, it will be served automatically as the site's homepage.
 
-> Butuh koneksi internet untuk memuat font *Press Start 2P* dari Google Fonts. Jika offline, game tetap berjalan tapi memakai font fallback monospace.
+> An internet connection is needed to load the *Press Start 2P* font from Google Fonts. If offline, the game still runs but falls back to a generic monospace font.
 
-## 🎮 Cara Main
+## 🎮 How to Play
 
-1. Balok pertama sudah terpasang di tengah sebagai fondasi.
-2. Balok kedua bergerak bolak-balik secara otomatis.
-3. **Klik / tap layar, atau tekan tombol Spasi** tepat saat balok berada di posisi yang sejajar dengan balok di bawahnya.
-4. Bagian balok yang tidak sejajar (overhang) akan terpotong dan jatuh.
-5. Setiap balok berhasil ditumpuk = skor +1, dan kecepatan gerak balok berikutnya sedikit meningkat.
-6. Jika balok meleset total (tidak ada bagian yang tumpang tindih) → **Game Over**.
-7. Tekan tombol **MAIN LAGI** untuk mengulang dari awal.
+1. The first block is already placed in the center as the foundation.
+2. A second block slides back and forth automatically.
+3. **Click / tap the screen, or press the Spacebar** right when the moving block is aligned with the block below it.
+4. Any part that doesn't overlap (the overhang) gets sliced off and falls away.
+5. Each successfully stacked block = +1 score, and the next block moves slightly faster.
+6. If the block misses completely (no overlap at all) → **Game Over**.
+7. Press **MAIN LAGI** (Play Again) to restart.
 
-## 🕹️ Kontrol
+## 🕹️ Controls
 
-| Aksi | Tombol |
+| Action | Input |
 |---|---|
-| Taruh balok | Klik mouse / Tap layar / Tombol Spasi |
-| Main ulang setelah kalah | Tombol "MAIN LAGI" di layar |
+| Place block | Mouse click / Screen tap / Spacebar |
+| Restart after losing | On-screen "MAIN LAGI" button |
 
-## 🏆 Skor
+## 🏆 Scoring
 
-- **Score**: jumlah balok yang berhasil ditumpuk di sesi berjalan.
-- **Best**: skor tertinggi, disimpan otomatis di browser (`localStorage`) sehingga tetap ada walau halaman ditutup — kecuali data situs/browser dibersihkan.
+- **Score**: number of blocks successfully stacked in the current run.
+- **Best**: your highest score, saved automatically in the browser (`localStorage`), so it persists across visits unless site/browser data is cleared.
 
-## 🛠️ Kustomisasi Singkat
+## 🛠️ Quick Customization
 
-Semua bisa diubah langsung di dalam `index.html`:
+Everything can be adjusted directly inside `index.html`:
 
-- **Warna tema**: ubah nilai di `:root { --bg1; --bg2; --accent; --accent2; --ink; }` dan array `PALETTE` di bagian JavaScript untuk warna balok.
-- **Tinggi tiap balok**: ubah konstanta `BLOCK_H`.
-- **Kecepatan awal & pertambahan kecepatan**: ubah `speed` dan rumus `speed = Math.min(7, 2.2 + score*0.12)`.
-- **Lebar area gerak balok**: ubah variabel `range` (default `130`).
+- **Theme colors**: edit the values in `:root { --bg1; --bg2; --accent; --accent2; --ink; }`, and the `PALETTE` array in the JavaScript section for block colors.
+- **Block height**: edit the `BLOCK_H` constant.
+- **Starting speed & speed ramp**: edit `speed` and the formula `speed = Math.min(7, 2.2 + score*0.12)`.
+- **Movement range of the sliding block**: edit the `range` variable (default `130`).
 
-## 💻 Kompatibilitas
+## 💻 Compatibility
 
-Bekerja di browser modern (Chrome, Edge, Firefox, Safari) versi terbaru, desktop maupun mobile. Tidak memerlukan Node.js, npm, atau dependensi eksternal apa pun selain koneksi ke Google Fonts (opsional).
+Works in modern browsers (Chrome, Edge, Firefox, Safari), latest versions, on both desktop and mobile. No Node.js, npm, or external dependencies required besides the optional Google Fonts connection.
 
-## 📄 Lisensi
+## 📄 License
 
-Bebas digunakan, dimodifikasi, dan dibagikan untuk keperluan pribadi maupun pembelajaran.
+Free to use, modify, and share for personal or learning purposes.
