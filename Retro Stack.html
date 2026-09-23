@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RETRO STACK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg1:#2b1b3d; --bg2:#120b1e; --accent:#ffd23f; --accent2:#ff6b9d;
+    --ink:#f4ead0; --panel:#1a0f2b; --line:#ff6b9d;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);}
+  body{
+    font-family:'Press Start 2P', monospace, sans-serif;
+    background: radial-gradient(ellipse at 50% 20%, var(--bg1), var(--bg2) 75%);
+    color:var(--ink);
+    position:fixed; inset:0;
+    overflow:hidden;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+  }
+  canvas{
+    position:fixed; inset:0; z-index:1; display:block; touch-action:manipulation; width:100%; height:100%;
+  }
+  #scanlines{
+    position:fixed; inset:0; pointer-events:none; z-index:5;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0px, rgba(0,0,0,.18) 1px, transparent 2px, transparent 4px);
+    mix-blend-mode:multiply;
+  }
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:4;
+    box-shadow: inset 0 0 20vw 4vw rgba(0,0,0,.55);
+  }
+  header{
+    position:fixed; top:0; left:0; right:0; z-index:3;
+    text-align:center; padding:calc(env(safe-area-inset-top,0px) + 14px) 10px 4px;
+    pointer-events:none;
+  }
+  h1{
+    font-size:clamp(18px,6vw,28px);
+    color:var(--accent);
+    text-shadow:3px 3px 0 var(--accent2), 0 0 18px rgba(255,107,157,.6);
+    letter-spacing:2px;
+  }
+  #hint{font-size:9px; margin-top:8px; opacity:.75; letter-spacing:1px;}
+  #hud{
+    display:flex; gap:22px; justify-content:center; margin-top:10px; font-size:11px;
+  }
+  #hud span{color:var(--accent2);}
+  #overlay{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    flex-direction:column; gap:16px; background:rgba(10,4,20,.82); z-index:10; text-align:center; padding:20px;
+  }
+  #overlay.show{display:flex;}
+  #overlay h2{color:var(--accent2); font-size:clamp(18px,6vw,26px); text-shadow:3px 3px 0 var(--accent);}
+  #overlay p{font-size:11px; line-height:1.8;}
+  button{
+    font-family:'Press Start 2P', monospace;
+    background:var(--accent2); color:#1a0f2b; border:3px solid var(--ink);
+    padding:12px 20px; font-size:11px; cursor:pointer; letter-spacing:1px;
+    box-shadow:4px 4px 0 var(--accent);
+  }
+  button:active{transform:translate(2px,2px); box-shadow:2px 2px 0 var(--accent);}
+  footer{position:fixed; bottom:env(safe-area-inset-bottom,0px); left:0; right:0; text-align:center; font-size:8px; opacity:.5; padding:8px; z-index:3; pointer-events:none;}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="scanlines"></div>
+<div id="vignette"></div>
+<header>
+  <h1>RETRO STACK</h1>
+  <div id="hud"><div>SCORE <span id="score">0</span></div><div>BEST <span id="best">0</span></div></div>
+  <div id="hint">Klik / Tap / Spasi untuk menaruh balok</div>
+</header>
+<div id="overlay">
+  <h2 id="overTitle">GAME OVER</h2>
+  <p id="overScore">Skor: 0</p>
+  <button id="restart">MAIN LAGI</button>
+</div>
+<footer>ESC-CADE EDITION</footer>
+
+<script>
+(function(){
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const overlay = document.getElementById('overlay');
+  const overScore = document.getElementById('overTitle');
+  const overScoreP = document.getElementById('overScore');
+  const restartBtn = document.getElementById('restart');
+
+  let best = 0;
+  try{ best = parseInt(localStorage.getItem('retroStackBest')||'0',10) || 0; }catch(e){ best = 0; }
+  bestEl.textContent = best;
+
+  const PALETTE = ['#ff8fb1','#ffd23f','#7bdff2','#a1de93','#c9a7ff','#ff9f6b','#6bd4ff','#f6a6ff'];
+  const SIDE_DARK_FACTOR = 0.55, SIDE_MED_FACTOR = 0.78;
+  const BLOCK_H = 34;
+  const COS30 = Math.cos(Math.PI/6), SIN30 = Math.sin(Math.PI/6);
+
+  function shade(hex, f){
+    const n = parseInt(hex.slice(1),16);
+    let r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+    r=Math.round(r*f); g=Math.round(g*f); b=Math.round(b*f);
+    return `rgb(${r},${g},${b})`;
+  }
+
+  let W,H,DPR;
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio||1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = Math.max(1,Math.round(W*DPR));
+    canvas.height = Math.max(1,Math.round(H*DPR));
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', resize);
+
+  let blocks, current, axis, dir, speed, score, running, cameraZ, targetCameraZ, fallers, gameOver;
+
+  function reset(){
+    blocks = [{x0:-90,y0:-90,w:180,d:180,z:0,color:PALETTE[0]}];
+    score = 0; scoreEl.textContent = score;
+    axis = 'x'; dir = 1; speed = 2.2;
+    current = {x0:-90,y0:-90,w:180,d:180,z:BLOCK_H,color:PALETTE[1]};
+    current._base = -90; current._range = 130;
+    cameraZ = 0; targetCameraZ = 0;
+    fallers = [];
+    running = true; gameOver = false;
+    overlay.classList.remove('show');
+  }
+
+  function project(x,y,z){
+    const scale = Math.min(W,H) / 850;
+    const sx = W/2 + (x - y) * COS30 * scale;
+    const sy = H*0.62 + (x + y) * SIN30 * scale - (z - cameraZ) * scale;
+    return [sx, sy, scale];
+  }
+
+  function drawCube(b, alpha){
+    alpha = alpha===undefined?1:alpha;
+    const {x0,y0,w,d,z,color} = b;
+    const x1=x0+w, y1=y0+d, z1=z+BLOCK_H;
+    const top = [project(x0,y0,z1),project(x1,y0,z1),project(x1,y1,z1),project(x0,y1,z1)];
+    const right = [project(x1,y0,z1),project(x1,y1,z1),project(x1,y1,z),project(x1,y0,z)];
+    const left = [project(x0,y1,z1),project(x1,y1,z1),project(x1,y1,z),project(x0,y1,z)];
+    ctx.globalAlpha = alpha;
+    poly(top, color);
+    poly(left, shade(color, SIDE_DARK_FACTOR));
+    poly(right, shade(color, SIDE_MED_FACTOR));
+    ctx.globalAlpha = 1;
+  }
+  function poly(pts, fill){
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle='rgba(20,10,30,.35)';
+    ctx.lineWidth=1;
+    ctx.stroke();
+  }
+
+  function place(){
+    if(!running || gameOver) return;
+    const prev = blocks[blocks.length-1];
+    let nx0=current.x0, ny0=current.y0, nw=current.w, nd=current.d, dropX0, dropW;
+    if(axis==='x'){
+      const left = Math.max(prev.x0, current.x0);
+      const right = Math.min(prev.x0+prev.w, current.x0+current.w);
+      const overlap = right-left;
+      if(overlap<=1){ fail(); return; }
+      const cut = current.w - overlap;
+      if(cut>0.5){
+        const fallX0 = (current.x0 < prev.x0) ? current.x0 : left+overlap;
+        fallers.push({x0:fallX0,y0:current.y0,w:cut,d:current.d,z:current.z,color:current.color,vz:0,vy: (current.x0<prev.x0? -3.2:3.2), rot:0, alpha:1});
+      }
+      nx0=left; nw=overlap; ny0=current.y0; nd=current.d;
+    } else {
+      const top = Math.max(prev.y0, current.y0);
+      const bottom = Math.min(prev.y0+prev.d, current.y0+current.d);
+      const overlap = bottom-top;
+      if(overlap<=1){ fail(); return; }
+      const cut = current.d - overlap;
+      if(cut>0.5){
+        const fallY0 = (current.y0 < prev.y0) ? current.y0 : top+overlap;
+        fallers.push({x0:current.x0,y0:fallY0,w:current.w,d:cut,z:current.z,color:current.color,vz:0,vy:(current.y0<prev.y0?-3.2:3.2), rot:0, alpha:1, horiz:false});
+      }
+      ny0=top; nd=overlap; nx0=current.x0; nw=current.w;
+    }
+    const placed = {x0:nx0,y0:ny0,w:nw,d:nd,z:current.z,color:current.color};
+    blocks.push(placed);
+    score++; scoreEl.textContent = score;
+    targetCameraZ = Math.max(0, (blocks.length-1)*BLOCK_H - BLOCK_H*2.2);
+    axis = axis==='x' ? 'y' : 'x';
+    dir = 1;
+    speed = Math.min(7, 2.2 + score*0.12);
+    const range = 130;
+    current = {
+      x0: axis==='x' ? placed.x0 - range : placed.x0,
+      y0: axis==='y' ? placed.y0 - range : placed.y0,
+      w: placed.w, d: placed.d,
+      z: placed.z + BLOCK_H,
+      color: PALETTE[blocks.length % PALETTE.length]
+    };
+    current._base = axis==='x' ? placed.x0 : placed.y0;
+    current._range = range;
+  }
+
+  function fail(){
+    gameOver = true; running = false;
+    fallers.push({x0:current.x0,y0:current.y0,w:current.w,d:current.d,z:current.z,color:current.color,vz:0,vy:0,rot:0,alpha:1});
+    if(score>best){ best=score; try{localStorage.setItem('retroStackBest', String(best));}catch(e){} }
+    bestEl.textContent = best;
+    setTimeout(()=>{
+      overScore.textContent = 'GAME OVER';
+      overScoreP.textContent = 'Skor: '+score+'   Terbaik: '+best;
+      overlay.classList.add('show');
+    }, 450);
+  }
+
+  let t=0;
+  function tick(){
+    t += 0.016;
+    if(running && !gameOver){
+      const osc = Math.sin(t*speed);
+      if(axis==='x') current.x0 = current._base + current._range + osc*current._range;
+      else current.y0 = current._base + current._range + osc*current._range;
+    }
+    cameraZ += (targetCameraZ - cameraZ) * 0.12;
+    for(const f of fallers){
+      f.vz += 1.1; f.z -= f.vz*0.5;
+      if(f.horiz===false){ f.y0 += f.vy; } else { f.x0 += f.vy; }
+      f.alpha -= 0.02;
+    }
+    fallers = fallers.filter(f=>f.alpha>0);
+
+    ctx.clearRect(0,0,W,H);
+    const allBlocks = blocks.slice(-9);
+    for(const b of allBlocks) drawCube(b);
+    if(!gameOver) drawCube(current);
+    for(const f of fallers) drawCube(f, Math.max(0,f.alpha));
+    requestAnimationFrame(tick);
+  }
+
+  function onAction(e){
+    if(e){ if(e.code==='Space') e.preventDefault(); }
+    if(gameOver) return;
+    place();
+  }
+  window.addEventListener('keydown', e=>{ if(e.code==='Space') onAction(e); });
+  canvas.addEventListener('pointerdown', onAction);
+  restartBtn.addEventListener('click', ()=>{ reset(); });
+
+  resize();
+  reset();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
